@@ -212,6 +212,73 @@ export default function TweaksPanel({ open, onClose }: TweaksPanelProps) {
           )}
         </Section>
 
+        {/* ── SPENDING / USAGE CONTROLS ────────── */}
+        <Section title="SPENDING CONTROLS">
+          <div style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", marginBottom: 10, lineHeight: 1.5 }}>
+            Set limits to avoid runaway API costs. Leave at 0 for no cap.
+          </div>
+
+          <label style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", display: "block", marginBottom: 4 }}>
+            Max tokens per request
+          </label>
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="number"
+              min={0}
+              max={128000}
+              step={500}
+              value={s.maxTokens || ""}
+              onChange={(e) => update({ maxTokens: Number(e.target.value) || 0 })}
+              placeholder="0 = no limit"
+              className="vi-input"
+              style={{ fontSize: "0.8rem", flex: 1 }}
+            />
+            {s.maxTokens > 0 && (
+              <button
+                onClick={() => update({ maxTokens: 0 })}
+                style={{ fontSize: "0.68rem", color: "var(--vi-fg-muted)", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {s.maxTokens > 0 && (
+            <div style={{ fontSize: "0.64rem", color: "var(--vi-fg-muted)", marginBottom: 8, opacity: 0.8 }}>
+              Capped at {s.maxTokens.toLocaleString()} tokens (~${(s.maxTokens / 1000 * 0.003).toFixed(3)} est.)
+            </div>
+          )}
+
+          <label style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", display: "block", marginBottom: 4 }}>
+            Max jobs per hour (client cap)
+          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={s.jobsPerHourCap || ""}
+              onChange={(e) => update({ jobsPerHourCap: Number(e.target.value) || 0 })}
+              placeholder="0 = no cap"
+              className="vi-input"
+              style={{ fontSize: "0.8rem", flex: 1 }}
+            />
+            {s.jobsPerHourCap > 0 && (
+              <button
+                onClick={() => update({ jobsPerHourCap: 0 })}
+                style={{ fontSize: "0.68rem", color: "var(--vi-fg-muted)", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {s.jobsPerHourCap > 0 && (
+            <div style={{ fontSize: "0.64rem", color: "#C07D2A", marginBottom: 4, padding: "0.3rem 0.5rem", background: "rgba(192,125,42,0.08)", borderRadius: 4 }}>
+              Browser will block after {s.jobsPerHourCap} job{s.jobsPerHourCap !== 1 ? "s" : ""}/hr
+            </div>
+          )}
+        </Section>
+
         {/* ── DEMO JUMPS ────────────────────────── */}
         <Section title="DEMO">
           {[

@@ -12,6 +12,9 @@ export interface VidIntelSettings {
   llmProvider: LLMProvider;
   apiKey: string;
   model: string;
+  // Spending / usage controls
+  maxTokens: number;        // 0 = no limit (provider default)
+  jobsPerHourCap: number;   // 0 = no cap (server decides)
 }
 
 const DEFAULTS: VidIntelSettings = {
@@ -22,6 +25,8 @@ const DEFAULTS: VidIntelSettings = {
   llmProvider: "",
   apiKey: "",
   model: "",
+  maxTokens: 0,
+  jobsPerHourCap: 0,
 };
 
 const KEY = "vidintel_settings";

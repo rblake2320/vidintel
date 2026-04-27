@@ -29,12 +29,18 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["jobs"])
 
 
-def _extract_llm_headers(request: Request) -> tuple[str, str, str]:
-    """Return (user_api_key, user_llm_provider, user_llm_model) from request headers."""
+def _extract_llm_headers(request: Request) -> tuple[str, str, str, int]:
+    """Return (user_api_key, user_llm_provider, user_llm_model, max_tokens) from headers."""
+    raw_max = request.headers.get("X-LLM-Max-Tokens", "0")
+    try:
+        max_tokens = max(0, int(raw_max))
+    except ValueError:
+        max_tokens = 0
     return (
         request.headers.get("X-LLM-Key", ""),
         request.headers.get("X-LLM-Provider", ""),
         request.headers.get("X-LLM-Model", ""),
+        max_tokens,
     )
 
 
@@ -48,7 +54,7 @@ async def submit_job(
 ):
     """Submit a new video/transcript processing job."""
     uid = uuid.UUID(user_id)
-    user_api_key, user_llm_provider, user_llm_model = _extract_llm_headers(request)
+    user_api_key, user_llm_provider, user_llm_model, user_max_tokens = _extract_llm_headers(request)
 
     session = Session(
         user_id=uid,
@@ -74,6 +80,7 @@ async def submit_job(
         user_api_key=user_api_key,
         user_llm_provider=user_llm_provider,
         user_llm_model=user_llm_model,
+        user_max_tokens=user_max_tokens,
     )
 
     return JobResponse(job_id=job.id, session_id=session.id, status=job.status)
@@ -88,7 +95,7 @@ async def submit_bulk(
 ):
     """Submit up to 50 jobs in one request."""
     uid = uuid.UUID(user_id)
-    user_api_key, user_llm_provider, user_llm_model = _extract_llm_headers(request)
+    user_api_key, user_llm_provider, user_llm_model, user_max_tokens = _extract_llm_headers(request)
 
     created: list[tuple[Job, Session]] = []
     for item in body.items:
@@ -119,6 +126,7 @@ async def submit_bulk(
             user_api_key=user_api_key,
             user_llm_provider=user_llm_provider,
             user_llm_model=user_llm_model,
+            user_max_tokens=user_max_tokens,
         )
 
     return BulkJobResponse(

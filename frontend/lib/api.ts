@@ -41,6 +41,40 @@ export interface UsageResponse {
   limit_per_hour: number;
 }
 
+// ── Client-side hourly job cap ────────────────────────────────────
+const CAP_KEY = "vidintel_job_cap";
+
+interface CapRecord { count: number; windowStart: number; }
+
+function getCapRecord(): CapRecord {
+  try {
+    const raw = localStorage.getItem(CAP_KEY);
+    if (raw) return JSON.parse(raw) as CapRecord;
+  } catch { /* ignore */ }
+  return { count: 0, windowStart: Date.now() };
+}
+
+function incrementCapRecord(): CapRecord {
+  const now = Date.now();
+  let rec = getCapRecord();
+  if (now - rec.windowStart > 3_600_000) rec = { count: 0, windowStart: now };
+  rec.count += 1;
+  localStorage.setItem(CAP_KEY, JSON.stringify(rec));
+  return rec;
+}
+
+export function checkJobCap(): { blocked: boolean; used: number; cap: number } {
+  const s = getSettings();
+  const cap = s.jobsPerHourCap;
+  if (!cap) return { blocked: false, used: 0, cap: 0 };
+  const now = Date.now();
+  const rec = getCapRecord();
+  const used = now - rec.windowStart > 3_600_000 ? 0 : rec.count;
+  return { blocked: used >= cap, used, cap };
+}
+
+// ─────────────────────────────────────────────────────────────────
+
 function authHeaders(token: string): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -53,6 +87,7 @@ function authHeaders(token: string): Record<string, string> {
     if (s.apiKey) headers["X-LLM-Key"] = s.apiKey;
     if (s.model) headers["X-LLM-Model"] = s.model;
   }
+  if (s.maxTokens > 0) headers["X-LLM-Max-Tokens"] = String(s.maxTokens);
   return headers;
 }
 
@@ -62,6 +97,13 @@ export async function submitJob(
   sourceType: SourceType,
   outputFormat: OutputFormat,
 ): Promise<JobResponse> {
+  const capCheck = checkJobCap();
+  if (capCheck.blocked) {
+    throw new Error(
+      `Spending cap: you've used ${capCheck.used}/${capCheck.cap} jobs this hour. ` +
+      `Increase or clear the cap in Tweaks → Spending Controls.`
+    );
+  }
   const res = await fetch(`${API_URL}/api/process`, {
     method: "POST",
     headers: authHeaders(token),
@@ -71,6 +113,7 @@ export async function submitJob(
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "Failed to submit job");
   }
+  incrementCapRecord();
   return res.json();
 }
 
@@ -78,6 +121,13 @@ export async function submitBulk(
   token: string,
   items: { source: string; source_type: SourceType; output_format: OutputFormat }[],
 ): Promise<BulkResponse> {
+  const capCheck = checkJobCap();
+  if (capCheck.blocked) {
+    throw new Error(
+      `Spending cap: you've used ${capCheck.used}/${capCheck.cap} jobs this hour. ` +
+      `Increase or clear the cap in Tweaks → Spending Controls.`
+    );
+  }
   const res = await fetch(`${API_URL}/api/bulk`, {
     method: "POST",
     headers: authHeaders(token),

@@ -56,6 +56,7 @@ def process_video(
     user_api_key: str = "",
     user_llm_provider: str = "",
     user_llm_model: str = "",
+    user_max_tokens: int = 0,
 ):
     """
     Main processing task. Extracts transcript, runs LLM, saves output.
@@ -116,12 +117,17 @@ def process_video(
                 raise ValueError("No LLM API key configured on the server")
             model = ""
 
+        extra_kwargs: dict = {}
+        if user_max_tokens > 0:
+            extra_kwargs["max_tokens"] = user_max_tokens
+
         output = process_transcript(
             transcript=transcript,
             output_format=output_format,
             provider=provider,
             api_key=api_key,
             model=model,
+            **extra_kwargs,
         )
 
         db.execute(

@@ -227,6 +227,7 @@ def process_transcript(
     provider: str = "",
     api_key: str = "",
     model: str = "",
+    max_tokens: int = 4096,
 ) -> str:
     """Process a transcript through the LLM with the specified output format."""
     if output_format not in PROMPTS:
@@ -237,13 +238,13 @@ def process_transcript(
 
     if len(chunks) == 1:
         prompt = template.format(transcript=chunks[0])
-        return _call_llm(prompt, provider, api_key, model)
+        return _call_llm(prompt, provider, api_key, model, max_tokens)
 
     logger.info("Processing %d chunks for format '%s'", len(chunks), output_format)
     chunk_results = []
     for i, chunk in enumerate(chunks):
         prompt = template.format(transcript=chunk)
-        result = _call_llm(prompt, provider, api_key, model)
+        result = _call_llm(prompt, provider, api_key, model, max_tokens)
         chunk_results.append(result)
         logger.info("Completed chunk %d/%d", i + 1, len(chunks))
 
@@ -259,4 +260,4 @@ def process_transcript(
     for i, result in enumerate(chunk_results):
         merge_prompt += f"--- SECTION {i + 1} ---\n{result}\n\n"
 
-    return _call_llm(merge_prompt, provider, api_key, model)
+    return _call_llm(merge_prompt, provider, api_key, model, max_tokens)
