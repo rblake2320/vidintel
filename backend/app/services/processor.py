@@ -1,7 +1,8 @@
 """LLM processing engine with chunking and prompt rendering.
 
-Uses Anthropic Claude when ANTHROPIC_API_KEY is set; falls back to
-OpenAI GPT-4o when only OPENAI_API_KEY is available.
+Supports any OpenAI-compatible provider (OpenAI, Google Gemini, Groq,
+Together, Mistral, DeepSeek, xAI, NVIDIA NIM, Ollama) plus Anthropic
+Claude via its native SDK.
 """
 
 import logging
@@ -10,73 +11,149 @@ from app.prompts import PROMPTS
 
 logger = logging.getLogger(__name__)
 
-# Token limits for chunking
 MAX_CHUNK_TOKENS = 3000
 OVERLAP_TOKENS = 200
-# Rough approximation: 1 token ~ 4 characters
 CHARS_PER_TOKEN = 4
+
+# ── Provider registry ────────────────────────────────────────────────
+# Every provider except Anthropic uses the OpenAI-compatible chat API.
+# Format: provider -> (base_url, default_model, needs_api_key)
+PROVIDERS: dict[str, tuple[str, str, bool]] = {
+    "openai":      ("https://api.openai.com/v1",              "gpt-4.1-nano",                    True),
+    "google":      ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash", True),
+    "openrouter":  ("https://openrouter.ai/api/v1",           "meta-llama/llama-3.3-70b-instruct", True),
+    "groq":        ("https://api.groq.com/openai/v1",        "llama-3.3-70b-versatile",          True),
+    "together":    ("https://api.together.xyz/v1",            "meta-llama/Llama-3.3-70B-Instruct-Turbo", True),
+    "mistral":     ("https://api.mistral.ai/v1",              "mistral-small-latest",             True),
+    "deepseek":    ("https://api.deepseek.com/v1",            "deepseek-chat",                    True),
+    "xai":         ("https://api.x.ai/v1",                    "grok-3-mini",                      True),
+    "nvidia":      ("https://integrate.api.nvidia.com/v1",    "meta/llama-3.1-8b-instruct",       True),
+    "ollama":      ("http://localhost:11434/v1",               "gemma3:latest",                    False),
+    "huggingface": ("https://api-inference.huggingface.co/v1", "meta-llama/Llama-3.3-70B-Instruct", True),
+}
+
+# Models available per provider (shown in the frontend selector)
+PROVIDER_MODELS: dict[str, list[str]] = {
+    "anthropic": [
+        "claude-sonnet-4-6",
+        "claude-haiku-4-5-20251001",
+        "claude-opus-4-6",
+    ],
+    "openai": [
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "o3",
+        "o3-mini",
+        "o4-mini",
+    ],
+    "google": [
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+    ],
+    "groq": [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "gemma2-9b-it",
+        "mixtral-8x7b-32768",
+        "deepseek-r1-distill-llama-70b",
+    ],
+    "together": [
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+        "deepseek-ai/DeepSeek-R1",
+        "Qwen/Qwen2.5-72B-Instruct-Turbo",
+        "mistralai/Mixtral-8x22B-Instruct-v0.1",
+    ],
+    "mistral": [
+        "mistral-large-latest",
+        "mistral-small-latest",
+        "codestral-latest",
+        "open-mistral-nemo",
+    ],
+    "deepseek": [
+        "deepseek-chat",
+        "deepseek-reasoner",
+    ],
+    "xai": [
+        "grok-3",
+        "grok-3-mini",
+    ],
+    "openrouter": [
+        "meta-llama/llama-3.3-70b-instruct",
+        "anthropic/claude-sonnet-4",
+        "openai/gpt-4.1",
+        "google/gemini-2.5-pro",
+        "deepseek/deepseek-r1",
+        "qwen/qwen-2.5-72b-instruct",
+        "mistralai/mistral-large",
+    ],
+    "nvidia": [
+        "meta/llama-3.1-8b-instruct",
+        "meta/llama-3.1-70b-instruct",
+        "mistralai/mixtral-8x7b-instruct-v01",
+    ],
+    "huggingface": [
+        "meta-llama/Llama-3.3-70B-Instruct",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "Qwen/Qwen2.5-72B-Instruct",
+        "google/gemma-2-27b-it",
+    ],
+    "ollama": [
+        "gemma3:latest",
+        "llama3.1:latest",
+        "llama3.1:70b",
+        "deepseek-r1:32b",
+        "qwen2.5:latest",
+        "mistral:latest",
+        "phi4:latest",
+    ],
+}
 
 
 def _estimate_tokens(text: str) -> int:
-    """Rough token count estimate."""
     return len(text) // CHARS_PER_TOKEN
 
 
 def chunk_transcript(text: str) -> list[str]:
-    """
-    Split transcript into chunks of ~MAX_CHUNK_TOKENS with OVERLAP_TOKENS overlap.
-    If the text fits in one chunk, returns a single-element list.
-    """
     max_chars = MAX_CHUNK_TOKENS * CHARS_PER_TOKEN
     overlap_chars = OVERLAP_TOKENS * CHARS_PER_TOKEN
-
     if len(text) <= max_chars:
         return [text]
-
     chunks = []
     start = 0
     while start < len(text):
         end = start + max_chars
-        chunk = text[start:end]
-        chunks.append(chunk)
+        chunks.append(text[start:end])
         start = end - overlap_chars
-
     return chunks
 
 
-def _call_claude(prompt: str, api_key: str, max_tokens: int = 4096) -> str:
-    """Call Anthropic Claude API and return the text response."""
+def _call_anthropic(prompt: str, api_key: str, model: str = "", max_tokens: int = 4096) -> str:
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
-        model="claude-sonnet-4-6",
+        model=model or "claude-sonnet-4-6",
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
     return message.content[0].text
 
 
-def _call_openai(prompt: str, api_key: str, max_tokens: int = 4096) -> str:
-    """Call OpenAI GPT-4o API and return the text response."""
+def _call_openai_compatible(
+    prompt: str,
+    api_key: str,
+    base_url: str,
+    model: str,
+    max_tokens: int = 4096,
+) -> str:
     from openai import OpenAI
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(base_url=base_url, api_key=api_key or "ollama")
     response = client.chat.completions.create(
-        model="gpt-4o",
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content or ""
-
-
-def _call_nvidia(prompt: str, api_key: str, max_tokens: int = 4096) -> str:
-    """Call NVIDIA API (OpenAI-compatible) using llama-3.1-8b-instruct."""
-    from openai import OpenAI
-    client = OpenAI(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=api_key,
-    )
-    response = client.chat.completions.create(
-        model="meta/llama-3.1-8b-instruct",
+        model=model,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -85,35 +162,47 @@ def _call_nvidia(prompt: str, api_key: str, max_tokens: int = 4096) -> str:
 
 def _call_llm(
     prompt: str,
-    anthropic_api_key: str = "",
-    openai_api_key: str = "",
-    nvidia_api_key: str = "",
+    provider: str = "",
+    api_key: str = "",
+    model: str = "",
     max_tokens: int = 4096,
 ) -> str:
-    """Call Claude if key present, else OpenAI GPT-4o, else NVIDIA llama-3.1."""
-    if anthropic_api_key:
-        return _call_claude(prompt, anthropic_api_key, max_tokens)
-    elif openai_api_key:
-        return _call_openai(prompt, openai_api_key, max_tokens)
-    elif nvidia_api_key:
-        return _call_nvidia(prompt, nvidia_api_key, max_tokens)
-    else:
-        raise ValueError("No LLM API key configured (set ANTHROPIC_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY)")
+    """Route to the correct LLM provider."""
+    if not provider:
+        raise ValueError(
+            "No LLM provider configured. Set a provider in Tweaks or "
+            "configure ANTHROPIC_API_KEY / OPENAI_API_KEY / NVIDIA_API_KEY on the server."
+        )
+
+    if provider == "anthropic":
+        if not api_key:
+            raise ValueError("Anthropic API key required")
+        return _call_anthropic(prompt, api_key, model, max_tokens)
+
+    if provider not in PROVIDERS:
+        raise ValueError(f"Unknown provider: {provider}")
+
+    base_url, default_model, needs_key = PROVIDERS[provider]
+    if needs_key and not api_key:
+        raise ValueError(f"{provider} API key required")
+
+    return _call_openai_compatible(
+        prompt,
+        api_key=api_key,
+        base_url=base_url,
+        model=model or default_model,
+        max_tokens=max_tokens,
+    )
 
 
 def process_transcript(
     transcript: str,
     output_format: str,
-    anthropic_api_key: str = "",
-    openai_api_key: str = "",
-    nvidia_api_key: str = "",
+    provider: str = "",
+    api_key: str = "",
+    model: str = "",
 ) -> str:
-    """
-    Process a transcript through the LLM with the specified output format.
-
-    Chunks long transcripts, processes each chunk, then merges results.
-    Returns the final Markdown string.
-    """
+    """Process a transcript through the LLM with the specified output format."""
     if output_format not in PROMPTS:
         raise ValueError(f"Unknown output format: {output_format}")
 
@@ -122,18 +211,16 @@ def process_transcript(
 
     if len(chunks) == 1:
         prompt = template.format(transcript=chunks[0])
-        return _call_llm(prompt, anthropic_api_key, openai_api_key, nvidia_api_key)
+        return _call_llm(prompt, provider, api_key, model)
 
-    # Process each chunk separately
     logger.info("Processing %d chunks for format '%s'", len(chunks), output_format)
     chunk_results = []
     for i, chunk in enumerate(chunks):
         prompt = template.format(transcript=chunk)
-        result = _call_llm(prompt, anthropic_api_key, openai_api_key)
+        result = _call_llm(prompt, provider, api_key, model)
         chunk_results.append(result)
         logger.info("Completed chunk %d/%d", i + 1, len(chunks))
 
-    # Merge: ask LLM to consolidate the chunked outputs
     merge_prompt = (
         "You are given multiple Markdown sections generated from different parts "
         "of the same transcript. Merge them into a single cohesive document.\n\n"
@@ -146,4 +233,4 @@ def process_transcript(
     for i, result in enumerate(chunk_results):
         merge_prompt += f"--- SECTION {i + 1} ---\n{result}\n\n"
 
-    return _call_llm(merge_prompt, anthropic_api_key, openai_api_key)
+    return _call_llm(merge_prompt, provider, api_key, model)

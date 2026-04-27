@@ -182,7 +182,7 @@ export default function Navbar({ onTweaksClick }: NavbarProps) {
             padding: "0.25rem 0.6rem",
             cursor: "pointer",
             letterSpacing: "0.03em",
-            display: "none", // hidden by default — the tweaks are in the panel
+            display: "inline-flex",
           }}
         >
           ⚙

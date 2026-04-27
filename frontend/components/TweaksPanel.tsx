@@ -17,9 +17,48 @@ interface TweaksPanelProps {
 }
 
 const MODEL_OPTIONS: Record<string, string[]> = {
+  anthropic: ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-6"],
+  openai: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o4-mini"],
+  google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
+  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768", "deepseek-r1-distill-llama-70b"],
+  together: ["meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Llama-3.1-8B-Instruct-Turbo", "deepseek-ai/DeepSeek-R1", "Qwen/Qwen2.5-72B-Instruct-Turbo"],
+  mistral: ["mistral-large-latest", "mistral-small-latest", "codestral-latest", "open-mistral-nemo"],
+  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  xai: ["grok-3", "grok-3-mini"],
+  openrouter: ["meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4", "openai/gpt-4.1", "google/gemini-2.5-pro", "deepseek/deepseek-r1", "qwen/qwen-2.5-72b-instruct"],
   nvidia: ["meta/llama-3.1-8b-instruct", "meta/llama-3.1-70b-instruct", "mistralai/mixtral-8x7b-instruct-v01"],
-  openai: ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
-  anthropic: ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+  huggingface: ["meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "Qwen/Qwen2.5-72B-Instruct", "google/gemma-2-27b-it"],
+  ollama: ["gemma3:latest", "llama3.1:latest", "llama3.1:70b", "deepseek-r1:32b", "qwen2.5:latest", "mistral:latest", "phi4:latest"],
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  google: "Google Gemini",
+  openrouter: "OpenRouter (200+ models)",
+  groq: "Groq (fast)",
+  together: "Together AI",
+  mistral: "Mistral",
+  deepseek: "DeepSeek",
+  xai: "xAI (Grok)",
+  nvidia: "NVIDIA NIM",
+  huggingface: "Hugging Face",
+  ollama: "Ollama (local · free)",
+};
+
+const KEY_HINTS: Record<string, string> = {
+  anthropic: "sk-ant-...",
+  openai: "sk-...",
+  google: "AIza...",
+  openrouter: "sk-or-...",
+  groq: "gsk_...",
+  together: "...",
+  mistral: "...",
+  deepseek: "sk-...",
+  xai: "xai-...",
+  nvidia: "nvapi-...",
+  huggingface: "hf_...",
+  ollama: "",
 };
 
 export default function TweaksPanel({ open, onClose }: TweaksPanelProps) {
@@ -105,37 +144,51 @@ export default function TweaksPanel({ open, onClose }: TweaksPanelProps) {
           </label>
           <select
             value={s.llmProvider}
-            onChange={(e) => update({ llmProvider: e.target.value as LLMProvider, model: "" })}
+            onChange={(e) => update({ llmProvider: e.target.value as LLMProvider, model: "", apiKey: e.target.value === "ollama" ? "" : s.apiKey })}
             className="vi-input mb-3"
             style={{ fontSize: "0.8rem" }}
           >
             <option value="">Server default</option>
-            <option value="nvidia">NVIDIA</option>
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
+            <optgroup label="Cloud Providers">
+              {["anthropic", "openai", "google", "openrouter", "groq", "together", "mistral", "deepseek", "xai", "nvidia", "huggingface"].map((p) => (
+                <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Local (free)">
+              <option value="ollama">{PROVIDER_LABELS.ollama}</option>
+            </optgroup>
           </select>
 
           {s.llmProvider && (
             <>
-              <label style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", display: "block", marginBottom: 4 }}>
-                API Key
-              </label>
-              <input
-                type="password"
-                value={s.apiKey}
-                onChange={(e) => update({ apiKey: e.target.value })}
-                placeholder={s.llmProvider === "nvidia" ? "nvapi-..." : s.llmProvider === "openai" ? "sk-..." : "sk-ant-..."}
-                className="vi-input mb-3"
-                style={{ fontSize: "0.8rem" }}
-              />
+              {s.llmProvider !== "ollama" && (
+                <>
+                  <label style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", display: "block", marginBottom: 4 }}>
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={s.apiKey}
+                    onChange={(e) => update({ apiKey: e.target.value })}
+                    placeholder={KEY_HINTS[s.llmProvider] || "..."}
+                    className="vi-input mb-3"
+                    style={{ fontSize: "0.8rem" }}
+                  />
+                </>
+              )}
+              {s.llmProvider === "ollama" && (
+                <div style={{ fontSize: "0.68rem", color: "var(--vi-fg-muted)", marginBottom: 8, padding: "0.4rem 0.6rem", background: "rgba(42,125,62,0.08)", borderRadius: 4 }}>
+                  Free — runs on your machine via Ollama. No API key needed.
+                </div>
+              )}
 
               <label style={{ fontSize: "0.72rem", color: "var(--vi-fg-muted)", display: "block", marginBottom: 4 }}>
-                Model
+                Model (pick or type)
               </label>
               <select
-                value={s.model}
+                value={(MODEL_OPTIONS[s.llmProvider] || []).includes(s.model) ? s.model : ""}
                 onChange={(e) => update({ model: e.target.value })}
-                className="vi-input mb-3"
+                className="vi-input mb-2"
                 style={{ fontSize: "0.8rem" }}
               >
                 <option value="">Default</option>
@@ -143,6 +196,17 @@ export default function TweaksPanel({ open, onClose }: TweaksPanelProps) {
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
+              <input
+                type="text"
+                value={s.model}
+                onChange={(e) => update({ model: e.target.value })}
+                placeholder="or type: ft:gpt-4o:my-org:abc, my-finetuned-model..."
+                className="vi-input mb-1"
+                style={{ fontSize: "0.72rem", fontFamily: "ui-monospace, monospace" }}
+              />
+              <div style={{ fontSize: "0.58rem", color: "var(--vi-fg-muted)", marginBottom: 8, opacity: 0.7 }}>
+                Type any model ID — works with fine-tuned, custom, or trained models
+              </div>
             </>
           )}
         </Section>

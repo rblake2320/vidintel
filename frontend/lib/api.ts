@@ -48,9 +48,10 @@ function authHeaders(token: string): Record<string, string> {
   };
   // Inject user LLM settings if configured
   const s = getSettings();
-  if (s.llmProvider && s.apiKey) {
+  if (s.llmProvider) {
     headers["X-LLM-Provider"] = s.llmProvider;
-    headers["X-LLM-Key"] = s.apiKey;
+    if (s.apiKey) headers["X-LLM-Key"] = s.apiKey;
+    if (s.model) headers["X-LLM-Model"] = s.model;
   }
   return headers;
 }

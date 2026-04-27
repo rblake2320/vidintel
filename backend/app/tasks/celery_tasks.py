@@ -55,26 +55,17 @@ def process_video(
     user_id: str,
     user_api_key: str = "",
     user_llm_provider: str = "",
+    user_llm_model: str = "",
 ):
     """
     Main processing task. Extracts transcript, runs LLM, saves output.
-
-    Steps:
-    1. Update job status to 'processing'
-    2. Extract transcript
-    3. Process with LLM
-    4. Save output to session
-    5. Update job status to 'done'
-    On failure: update status to 'failed' with error message
     """
-    # Import ORM models here to avoid circular imports at module level
     from app.db.models import Job, Session
 
     db = _get_sync_session()
     try:
         job_uuid = uuid.UUID(job_id)
 
-        # 1. Update status to processing
         db.execute(
             update(Job)
             .where(Job.id == job_uuid)
@@ -82,13 +73,11 @@ def process_video(
         )
         db.commit()
 
-        # Get the session record
         job_row = db.execute(select(Job).where(Job.id == job_uuid)).scalar_one()
         session_row = db.execute(
             select(Session).where(Session.id == job_row.session_id)
         ).scalar_one()
 
-        # 2. Extract transcript
         from app.services.extractor import extract_transcript
 
         transcript = extract_transcript(
@@ -97,51 +86,51 @@ def process_video(
             openai_api_key=settings.OPENAI_API_KEY,
         )
 
-        # Save raw transcript
         db.execute(
             update(Session)
             .where(Session.id == session_row.id)
-            .values(
-                raw_transcript=transcript,
-                updated_at=datetime.now(timezone.utc),
-            )
+            .values(raw_transcript=transcript, updated_at=datetime.now(timezone.utc))
         )
         db.commit()
 
-        # 3. Process with LLM — user-provided key takes precedence
+        # Resolve provider/key/model: user overrides take precedence
         from app.services.processor import process_transcript
 
-        if user_llm_provider == "anthropic" and user_api_key:
-            anthropic_key, openai_key, nvidia_key = user_api_key, "", ""
-        elif user_llm_provider == "openai" and user_api_key:
-            anthropic_key, openai_key, nvidia_key = "", user_api_key, ""
-        elif user_llm_provider == "nvidia" and user_api_key:
-            anthropic_key, openai_key, nvidia_key = "", "", user_api_key
+        if user_llm_provider and user_api_key:
+            provider = user_llm_provider
+            api_key = user_api_key
+            model = user_llm_model
+        elif user_llm_provider == "ollama":
+            provider = "ollama"
+            api_key = ""
+            model = user_llm_model
         else:
-            anthropic_key = settings.ANTHROPIC_API_KEY
-            openai_key = settings.OPENAI_API_KEY
-            nvidia_key = settings.NVIDIA_API_KEY
+            # Fall back to server-configured keys (first available)
+            if settings.ANTHROPIC_API_KEY:
+                provider, api_key = "anthropic", settings.ANTHROPIC_API_KEY
+            elif settings.OPENAI_API_KEY:
+                provider, api_key = "openai", settings.OPENAI_API_KEY
+            elif settings.NVIDIA_API_KEY:
+                provider, api_key = "nvidia", settings.NVIDIA_API_KEY
+            else:
+                raise ValueError("No LLM API key configured on the server")
+            model = ""
 
         output = process_transcript(
             transcript=transcript,
             output_format=output_format,
-            anthropic_api_key=anthropic_key,
-            openai_api_key=openai_key,
-            nvidia_api_key=nvidia_key,
+            provider=provider,
+            api_key=api_key,
+            model=model,
         )
 
-        # 4. Save output to session
         db.execute(
             update(Session)
             .where(Session.id == session_row.id)
-            .values(
-                output_content=output,
-                updated_at=datetime.now(timezone.utc),
-            )
+            .values(output_content=output, updated_at=datetime.now(timezone.utc))
         )
         db.commit()
 
-        # 5. Update job status to done
         db.execute(
             update(Job)
             .where(Job.id == job_uuid)
@@ -156,7 +145,6 @@ def process_video(
         db.rollback()
         logger.error("Job %s failed: %s", job_id, exc, exc_info=True)
 
-        # Update job status to failed
         try:
             db.execute(
                 update(Job)

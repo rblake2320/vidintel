@@ -1,6 +1,8 @@
 export type Theme = "paper" | "ink";
 export type Density = "compact" | "comfortable" | "editorial";
-export type LLMProvider = "nvidia" | "openai" | "anthropic" | "";
+export type LLMProvider =
+  | "anthropic" | "openai" | "google" | "openrouter" | "groq" | "together"
+  | "mistral" | "deepseek" | "xai" | "nvidia" | "ollama" | "huggingface" | "";
 
 export interface VidIntelSettings {
   theme: Theme;
