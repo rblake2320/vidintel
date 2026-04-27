@@ -214,7 +214,7 @@ async def download_pdf(
 ):
     content = await _get_job_output(job_id, db, user_id)
     pdf_bytes = exporter.to_pdf(content)
-    filename = f"vidintel-{str(job_id)[:8]}.pdf`"
+    filename = f"vidintel-{str(job_id)[:8]}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
