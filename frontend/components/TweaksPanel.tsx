@@ -16,19 +16,20 @@ interface TweaksPanelProps {
   onClose: () => void;
 }
 
+// Full range: flagship → budget, nothing deprecated. Ordered best→cheapest.
 const MODEL_OPTIONS: Record<string, string[]> = {
   anthropic: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
-  openai: ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o3", "o3-pro", "o3-mini", "o4-mini"],
+  openai: ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini", "o3", "o3-pro", "o3-mini", "o4-mini"],
   google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
-  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "meta-llama/llama-4-scout-17b-16e-instruct", "gemma2-9b-it"],
-  together: ["Qwen/Qwen3.5-397B-A17B", "deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-R1", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"],
-  mistral: ["mistral-large-latest", "mistral-small-latest", "devstral-2512", "codestral-latest"],
+  groq: ["llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct", "gemma2-9b-it", "llama-3.1-8b-instant"],
+  together: ["Qwen/Qwen3.5-397B-A17B", "deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1", "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"],
+  mistral: ["mistral-large-latest", "devstral-2512", "codestral-latest", "mistral-small-latest"],
   deepseek: ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
-  xai: ["grok-4.20", "grok-4.20-reasoning", "grok-4.1-fast-reasoning", "grok-3-beta", "grok-3-mini-beta"],
-  openrouter: ["meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4", "openai/gpt-5.4", "google/gemini-2.5-pro", "deepseek/deepseek-r1", "qwen/qwen-2.5-72b-instruct"],
-  nvidia: ["meta/llama-3.1-8b-instruct", "meta/llama-3.1-70b-instruct", "mistralai/mixtral-8x7b-instruct-v01"],
+  xai: ["grok-4.20", "grok-4.20-reasoning", "grok-4.20-non-reasoning", "grok-4.1-fast-reasoning", "grok-4.1-fast-non-reasoning", "grok-3-beta", "grok-3-mini-beta"],
+  openrouter: ["anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4", "openai/gpt-5.4", "openai/gpt-4.1-nano", "google/gemini-2.5-pro", "google/gemini-2.5-flash", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-r1", "qwen/qwen-2.5-72b-instruct", "mistralai/mistral-large"],
+  nvidia: ["meta/llama-3.1-70b-instruct", "meta/llama-3.1-8b-instruct", "mistralai/mixtral-8x7b-instruct-v01"],
   huggingface: ["meta-llama/Llama-3.3-70B-Instruct", "Qwen/Qwen2.5-72B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "google/gemma-2-27b-it"],
-  ollama: ["gemma4:9b", "gemma3:latest", "llama3.3:70b", "llama3.1:latest", "deepseek-r1:32b", "deepseek-r1:7b", "qwen3:14b", "qwen2.5-coder:32b", "mistral:latest"],
+  ollama: ["llama3.3:70b", "deepseek-r1:70b", "qwen2.5-coder:32b", "deepseek-r1:32b", "qwen3:14b", "gemma4:9b", "gemma3:latest", "llama3.1:latest", "deepseek-r1:7b", "mistral:latest", "qwen2.5-coder:7b", "llama3.2-vision:11b"],
 };
 
 const PROVIDER_LABELS: Record<string, string> = {

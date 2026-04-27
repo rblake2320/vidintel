@@ -34,75 +34,87 @@ PROVIDERS: dict[str, tuple[str, str, bool]] = {
 
 # Models available per provider (shown in the frontend selector)
 # Updated April 2026 — only currently-supported models
+# Models per provider: full range from flagship → budget, nothing deprecated.
+# Ordered: best quality first, cheapest last.
 PROVIDER_MODELS: dict[str, list[str]] = {
     "anthropic": [
-        "claude-opus-4-7",
-        "claude-sonnet-4-6",
-        "claude-haiku-4-5-20251001",
+        "claude-opus-4-7",          # flagship
+        "claude-sonnet-4-6",        # mid-tier, best price/perf
+        "claude-haiku-4-5-20251001", # fast, cheapest
     ],
     "openai": [
-        "gpt-5.5",
-        "gpt-5.4",
-        "gpt-5.4-mini",
-        "gpt-5.4-nano",
-        "gpt-4.1",
-        "gpt-4.1-mini",
-        "gpt-4.1-nano",
-        "o3",
-        "o3-pro",
-        "o3-mini",
-        "o4-mini",
+        "gpt-5.5",           # flagship
+        "gpt-5.4",           # previous flagship
+        "gpt-5.4-mini",      # smaller/cheaper
+        "gpt-5.4-nano",      # smallest in 5.x
+        "gpt-4.1",           # still available
+        "gpt-4.1-mini",      # budget
+        "gpt-4.1-nano",      # cheapest
+        "gpt-4o",            # multimodal
+        "gpt-4o-mini",       # budget multimodal
+        "o3",                # reasoning flagship
+        "o3-pro",            # reasoning high-compute
+        "o3-mini",           # reasoning budget
+        "o4-mini",           # reasoning budget
     ],
     "google": [
-        "gemini-2.5-pro",
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
+        "gemini-2.5-pro",        # flagship reasoning
+        "gemini-2.5-flash",      # workhorse, built-in thinking
+        "gemini-2.5-flash-lite", # cheapest, high throughput
     ],
     "groq": [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "gemma2-9b-it",
+        "llama-3.3-70b-versatile",                       # 70B general purpose
+        "meta-llama/llama-4-scout-17b-16e-instruct",     # Llama 4 Scout
+        "gemma2-9b-it",                                   # 9B budget
+        "llama-3.1-8b-instant",                           # 8B fastest/cheapest
     ],
     "together": [
-        "Qwen/Qwen3.5-397B-A17B",
-        "deepseek-ai/DeepSeek-V4-Pro",
-        "deepseek-ai/DeepSeek-R1",
-        "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        "Qwen/Qwen3.5-397B-A17B",                        # largest MoE
+        "deepseek-ai/DeepSeek-V4-Pro",                    # DeepSeek flagship
+        "deepseek-ai/DeepSeek-V3",                        # DeepSeek v3
+        "deepseek-ai/DeepSeek-R1",                        # reasoning
+        "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",  # 405B
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo",        # 70B
+        "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",   # 70B alt
+        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",    # 8B cheapest
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",       # 14B distill
     ],
     "mistral": [
-        "mistral-large-latest",
-        "mistral-small-latest",
-        "devstral-2512",
-        "codestral-latest",
+        "mistral-large-latest",    # flagship 675B MoE
+        "devstral-2512",           # 123B agentic coding, 256K context
+        "codestral-latest",        # coding specialist
+        "mistral-small-latest",    # budget, fast
     ],
     "deepseek": [
-        "deepseek-v4-pro",
-        "deepseek-v4-flash",
-        "deepseek-chat",
-        "deepseek-reasoner",
+        "deepseek-v4-pro",      # flagship, 1M context
+        "deepseek-v4-flash",    # fast/cheap, 1M context
+        "deepseek-chat",        # legacy alias (deprecated Jul 2026)
+        "deepseek-reasoner",    # legacy alias (deprecated Jul 2026)
     ],
     "xai": [
-        "grok-4.20",
-        "grok-4.20-reasoning",
-        "grok-4.1-fast-reasoning",
-        "grok-3-beta",
-        "grok-3-mini-beta",
+        "grok-4.20",                    # flagship
+        "grok-4.20-reasoning",          # reasoning variant
+        "grok-4.20-non-reasoning",      # standard chat
+        "grok-4.1-fast-reasoning",      # fast reasoning
+        "grok-4.1-fast-non-reasoning",  # fast standard
+        "grok-3-beta",                  # previous gen
+        "grok-3-mini-beta",             # budget
     ],
     "openrouter": [
-        "meta-llama/llama-3.3-70b-instruct",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4",
         "openai/gpt-5.4",
+        "openai/gpt-4.1-nano",
         "google/gemini-2.5-pro",
+        "google/gemini-2.5-flash",
+        "meta-llama/llama-3.3-70b-instruct",
         "deepseek/deepseek-r1",
         "qwen/qwen-2.5-72b-instruct",
         "mistralai/mistral-large",
     ],
     "nvidia": [
-        "meta/llama-3.1-8b-instruct",
         "meta/llama-3.1-70b-instruct",
+        "meta/llama-3.1-8b-instruct",
         "mistralai/mixtral-8x7b-instruct-v01",
     ],
     "huggingface": [
@@ -112,15 +124,18 @@ PROVIDER_MODELS: dict[str, list[str]] = {
         "google/gemma-2-27b-it",
     ],
     "ollama": [
-        "gemma4:9b",
-        "gemma3:latest",
-        "llama3.3:70b",
-        "llama3.1:latest",
-        "deepseek-r1:32b",
-        "deepseek-r1:7b",
-        "qwen3:14b",
-        "qwen2.5-coder:32b",
-        "mistral:latest",
+        "llama3.3:70b",           # 70B GPT-4 class
+        "deepseek-r1:70b",        # 70B reasoning
+        "qwen2.5-coder:32b",      # 32B coding, 92.7% HumanEval
+        "deepseek-r1:32b",        # 32B reasoning
+        "qwen3:14b",              # 14B hybrid thinking
+        "gemma4:9b",              # 9B with tool calling
+        "gemma3:latest",          # 4B lightweight
+        "llama3.1:latest",        # 8B general
+        "deepseek-r1:7b",         # 7B reasoning, smallest
+        "mistral:latest",         # 7B general
+        "qwen2.5-coder:7b",      # 7B coding, 72% HumanEval
+        "llama3.2-vision:11b",   # 11B vision/multimodal
     ],
 }
 
