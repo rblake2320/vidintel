@@ -1,0 +1,60 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vidintel_test
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      APP_ENV: testing
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vidintel_test
+      REDIS_URL: redis://localhost:6379/1
+      SUPABASE_JWT_SECRET: test-secret-for-ci
+      ANTHROPIC_API_KEY: sk-ant-test
+      OPENAI_API_KEY: sk-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run linting
+        working-directory: backend
+        run: ruff check app/ tests/
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -v --tb=short
