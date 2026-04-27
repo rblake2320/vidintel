@@ -17,18 +17,18 @@ interface TweaksPanelProps {
 }
 
 const MODEL_OPTIONS: Record<string, string[]> = {
-  anthropic: ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-6"],
-  openai: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o4-mini"],
-  google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
-  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768", "deepseek-r1-distill-llama-70b"],
-  together: ["meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Llama-3.1-8B-Instruct-Turbo", "deepseek-ai/DeepSeek-R1", "Qwen/Qwen2.5-72B-Instruct-Turbo"],
-  mistral: ["mistral-large-latest", "mistral-small-latest", "codestral-latest", "open-mistral-nemo"],
-  deepseek: ["deepseek-chat", "deepseek-reasoner"],
-  xai: ["grok-3", "grok-3-mini"],
-  openrouter: ["meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4", "openai/gpt-4.1", "google/gemini-2.5-pro", "deepseek/deepseek-r1", "qwen/qwen-2.5-72b-instruct"],
+  anthropic: ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+  openai: ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o3", "o3-pro", "o3-mini", "o4-mini"],
+  google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "meta-llama/llama-4-scout-17b-16e-instruct", "gemma2-9b-it"],
+  together: ["Qwen/Qwen3.5-397B-A17B", "deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-R1", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"],
+  mistral: ["mistral-large-latest", "mistral-small-latest", "devstral-2512", "codestral-latest"],
+  deepseek: ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
+  xai: ["grok-4.20", "grok-4.20-reasoning", "grok-4.1-fast-reasoning", "grok-3-beta", "grok-3-mini-beta"],
+  openrouter: ["meta-llama/llama-3.3-70b-instruct", "anthropic/claude-sonnet-4", "openai/gpt-5.4", "google/gemini-2.5-pro", "deepseek/deepseek-r1", "qwen/qwen-2.5-72b-instruct"],
   nvidia: ["meta/llama-3.1-8b-instruct", "meta/llama-3.1-70b-instruct", "mistralai/mixtral-8x7b-instruct-v01"],
-  huggingface: ["meta-llama/Llama-3.3-70B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "Qwen/Qwen2.5-72B-Instruct", "google/gemma-2-27b-it"],
-  ollama: ["gemma3:latest", "llama3.1:latest", "llama3.1:70b", "deepseek-r1:32b", "qwen2.5:latest", "mistral:latest", "phi4:latest"],
+  huggingface: ["meta-llama/Llama-3.3-70B-Instruct", "Qwen/Qwen2.5-72B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1", "google/gemma-2-27b-it"],
+  ollama: ["gemma4:9b", "gemma3:latest", "llama3.3:70b", "llama3.1:latest", "deepseek-r1:32b", "deepseek-r1:7b", "qwen3:14b", "qwen2.5-coder:32b", "mistral:latest"],
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
