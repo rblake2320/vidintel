@@ -41,7 +41,11 @@ def get_transcript_from_captions(video_id: str) -> str | None:
 
 
 def get_transcript_from_whisper(video_id: str, openai_api_key: str) -> str:
-    """Download audio via yt-dlp and transcribe with OpenAI Whisper API."""
+    """Download audio via yt-dlp and transcribe with OpenAI Whisper API.
+
+    Uses formats (m4a, webm) that don't require ffmpeg post-processing.
+    Whisper API natively accepts m4a, mp4, mpeg, mpga, mp3, wav, webm.
+    """
     import openai
     import yt_dlp
 
@@ -50,15 +54,10 @@ def get_transcript_from_whisper(video_id: str, openai_api_key: str) -> str:
     with tempfile.TemporaryDirectory() as tmpdir:
         output_path = str(Path(tmpdir) / "audio.%(ext)s")
         ydl_opts = {
-            "format": "bestaudio/best",
+            # Prefer m4a/webm — no ffmpeg needed for these containers
+            "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=opus]/bestaudio",
             "outtmpl": output_path,
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "64",
-                }
-            ],
+            # No postprocessors → no ffmpeg dependency
             "quiet": True,
             "no_warnings": True,
         }
@@ -66,13 +65,10 @@ def get_transcript_from_whisper(video_id: str, openai_api_key: str) -> str:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
 
-        audio_file = Path(tmpdir) / "audio.mp3"
-        if not audio_file.exists():
-            # yt-dlp may use a different extension
-            audio_files = list(Path(tmpdir).glob("audio.*"))
-            if not audio_files:
-                raise RuntimeError(f"No audio file produced for video {video_id}")
-            audio_file = audio_files[0]
+        audio_files = list(Path(tmpdir).glob("audio.*"))
+        if not audio_files:
+            raise RuntimeError(f"No audio file produced for video {video_id}")
+        audio_file = audio_files[0]
 
         with open(audio_file, "rb") as f:
             response = client.audio.transcriptions.create(
