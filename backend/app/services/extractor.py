@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.formatters import TextFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +14,9 @@ YOUTUBE_URL_PATTERN = re.compile(
     r"(?:https?://)?(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]{11})"
 )
 
+# Language preference order: manual EN first, then auto-generated EN variants, then any
+_CAPTION_LANGUAGES = ["en", "en-US", "en-GB", "en-CA", "en-AU"]
+
 
 def extract_video_id(url: str) -> str | None:
     """Extract the 11-character video ID from a YouTube URL."""
@@ -22,25 +24,53 @@ def extract_video_id(url: str) -> str | None:
     return match.group(1) if match else None
 
 
-def get_transcript_from_captions(video_id: str) -> str | None:
-    """Attempt to fetch transcript via youtube-transcript-api."""
-    try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        # Prefer manually created, fall back to auto-generated
-        try:
-            transcript = transcript_list.find_manually_created_transcript(["en"])
-        except Exception:
-            transcript = transcript_list.find_generated_transcript(["en"])
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
 
-        fetched = transcript.fetch()
-        formatter = TextFormatter()
-        return formatter.format_transcript(fetched)
+
+def get_transcript_from_captions(video_id: str, cookies_file: str = "") -> str | None:
+    """Attempt to fetch transcript via youtube-transcript-api (v1.x API).
+
+    Tries manual EN captions first, then auto-generated EN variants.
+    Uses a browser-like User-Agent and optional cookies to avoid IP blocks.
+    """
+    import requests as _requests
+
+    session = _requests.Session()
+    session.headers.update({"User-Agent": _BROWSER_UA})
+    if cookies_file:
+        import http.cookiejar
+        jar = http.cookiejar.MozillaCookieJar(cookies_file)
+        jar.load(ignore_discard=True, ignore_expires=True)
+        session.cookies = jar  # type: ignore[assignment]
+
+    kwargs: dict = {"http_client": session}
+    api = YouTubeTranscriptApi(**kwargs)
+
+    # Try preferred languages
+    try:
+        fetched = api.fetch(video_id, languages=_CAPTION_LANGUAGES)
+        return " ".join(s.text for s in fetched)
     except Exception as exc:
-        logger.warning("Caption fetch failed for %s: %s", video_id, exc)
+        logger.debug("Preferred language captions failed for %s: %s", video_id, exc)
+
+    # Fall back to any available language
+    try:
+        fetched = api.fetch(video_id)
+        return " ".join(s.text for s in fetched)
+    except Exception as exc:
+        logger.warning("All caption fetches failed for %s: %s", video_id, exc)
         return None
 
 
-def get_transcript_from_whisper(video_id: str, openai_api_key: str) -> str:
+def get_transcript_from_whisper(
+    video_id: str,
+    openai_api_key: str,
+    cookies_file: str = "",
+) -> str:
     """Download audio via yt-dlp and transcribe with OpenAI Whisper API.
 
     Uses formats (m4a, webm) that don't require ffmpeg post-processing.
@@ -57,13 +87,35 @@ def get_transcript_from_whisper(video_id: str, openai_api_key: str) -> str:
             # Prefer m4a/webm — no ffmpeg needed for these containers
             "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=opus]/bestaudio",
             "outtmpl": output_path,
-            # No postprocessors → no ffmpeg dependency
             "quiet": True,
             "no_warnings": True,
+            "http_headers": {"User-Agent": _BROWSER_UA},
         }
+        if cookies_file:
+            ydl_opts["cookiefile"] = cookies_file
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+        # Try download; on bot-detection retry with browser cookies
+        def _download(opts: dict) -> None:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+
+        try:
+            _download(ydl_opts)
+        except yt_dlp.utils.DownloadError as exc:
+            msg = str(exc)
+            if "Sign in" not in msg and "bot" not in msg.lower():
+                raise
+            # Retry with Chrome cookies automatically
+            logger.info("Bot detection on %s — retrying with Chrome cookies", video_id)
+            try:
+                _download({**ydl_opts, "cookiesfrombrowser": ("chrome",)})
+            except Exception:
+                raise RuntimeError(
+                    f"YouTube blocked the audio download for video {video_id} "
+                    "(bot detection). Options: (1) set YOUTUBE_COOKIES_FILE in .env "
+                    "to a Netscape-format cookies file exported from your browser, "
+                    "or (2) paste the transcript directly using the 'Paste transcript' option."
+                ) from exc
 
         audio_files = list(Path(tmpdir).glob("audio.*"))
         if not audio_files:
@@ -83,6 +135,7 @@ def extract_transcript(
     source: str,
     source_type: str,
     openai_api_key: str = "",
+    cookies_file: str = "",
 ) -> str:
     """
     Main entry point for transcript extraction.
@@ -101,16 +154,17 @@ def extract_transcript(
         raise ValueError(f"Could not extract video ID from URL: {source}")
 
     # Try captions first
-    transcript = get_transcript_from_captions(video_id)
+    transcript = get_transcript_from_captions(video_id, cookies_file=cookies_file)
     if transcript:
         return transcript
 
     # Fallback to Whisper
     if not openai_api_key:
         raise RuntimeError(
-            f"No captions available for video {video_id} and no OpenAI API key "
-            "configured for Whisper fallback"
+            f"No captions available for video {video_id}. "
+            "To process this video: (1) configure OPENAI_API_KEY for Whisper transcription, "
+            "or (2) use the 'Paste transcript' option to paste the text directly."
         )
 
     logger.info("Falling back to Whisper for video %s", video_id)
-    return get_transcript_from_whisper(video_id, openai_api_key)
+    return get_transcript_from_whisper(video_id, openai_api_key, cookies_file=cookies_file)

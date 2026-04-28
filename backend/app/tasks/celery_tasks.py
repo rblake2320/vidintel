@@ -85,6 +85,7 @@ def process_video(
             source=source,
             source_type=source_type,
             openai_api_key=settings.OPENAI_API_KEY,
+            cookies_file=settings.YOUTUBE_COOKIES_FILE,
         )
 
         db.execute(

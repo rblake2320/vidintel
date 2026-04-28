@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     NVIDIA_API_KEY: str = ""
 
+    # YouTube cookies file path for yt-dlp (needed when captions unavailable)
+    YOUTUBE_COOKIES_FILE: str = ""
+
     # Sentry
     SENTRY_DSN: str = ""
 

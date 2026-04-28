@@ -27,6 +27,8 @@ export interface SessionResponse {
   source_type: string;
   output_format: string;
   output_content: string | null;
+  job_status: string | null;
+  job_error: string | null;
   created_at: string;
   updated_at: string;
 }

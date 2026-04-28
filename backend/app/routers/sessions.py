@@ -27,7 +27,29 @@ async def list_sessions(
         .limit(50)
     )
     sessions = result.scalars().all()
-    return [SessionResponse.model_validate(s) for s in sessions]
+
+    # Fetch the most recent job status per session
+    session_ids = [s.id for s in sessions]
+    job_map: dict[uuid.UUID, Job] = {}
+    if session_ids:
+        job_result = await db.execute(
+            select(Job)
+            .where(Job.session_id.in_(session_ids))
+            .order_by(Job.created_at.desc())
+        )
+        for job in job_result.scalars().all():
+            if job.session_id not in job_map:
+                job_map[job.session_id] = job
+
+    rows = []
+    for s in sessions:
+        job = job_map.get(s.id)
+        row = SessionResponse.model_validate(s)
+        if job:
+            row.job_status = job.status
+            row.job_error = job.error_message
+        rows.append(row)
+    return rows
 
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

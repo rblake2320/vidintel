@@ -56,6 +56,8 @@ class SessionResponse(BaseModel):
     source_type: str
     output_format: str
     output_content: str | None = None
+    job_status: str | None = None       # most recent job status for this session
+    job_error: str | None = None        # error message if failed
     created_at: datetime
     updated_at: datetime
 

@@ -75,8 +75,11 @@ export default function HistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid var(--vi-border)" }}>
+              {sessions.map((s) => {
+                const isFailed = s.job_status === "failed";
+                const isPending = !s.output_content && s.job_status !== "failed";
+                return (
+                <tr key={s.id} style={{ borderBottom: "1px solid var(--vi-border)", opacity: isFailed ? 0.85 : 1 }}>
                   <td style={{ padding: "0.65rem 0.9rem", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {s.source_url || "Pasted transcript"}
                   </td>
@@ -84,6 +87,19 @@ export default function HistoryPage() {
                     <span className="vi-badge" style={{ color: "var(--vi-accent)" }}>
                       {FORMAT_LABELS[s.output_format] || s.output_format}
                     </span>
+                    {isFailed && (
+                      <span
+                        title={s.job_error || "Processing failed"}
+                        style={{ marginLeft: 6, fontSize: "0.68rem", fontWeight: 700, color: "#ef4444", letterSpacing: "0.05em", cursor: "help" }}
+                      >
+                        FAILED
+                      </span>
+                    )}
+                    {isPending && (
+                      <span style={{ marginLeft: 6, fontSize: "0.68rem", color: "var(--vi-fg-muted)", letterSpacing: "0.05em" }}>
+                        PENDING
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: "0.65rem 0.9rem", color: "var(--vi-fg-muted)" }}>
                     {new Date(s.created_at).toLocaleDateString()}
@@ -97,6 +113,14 @@ export default function HistoryPage() {
                         View
                       </button>
                     )}
+                    {isFailed && (
+                      <button
+                        onClick={() => router.push("/")}
+                        style={{ color: "var(--vi-accent)", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: 600, marginRight: 10 }}
+                      >
+                        Retry
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(s.id)}
                       style={{ color: "var(--vi-fg-muted)", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem" }}
@@ -105,7 +129,8 @@ export default function HistoryPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

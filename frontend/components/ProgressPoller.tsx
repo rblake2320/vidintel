@@ -54,7 +54,52 @@ export default function ProgressPoller({ jobId }: ProgressPollerProps) {
     };
   }, [jobId, router]);
 
-  const progress = status === "pending" ? 25 : status === "processing" ? 65 : 100;
+  const isFailed = status === "failed" || !!error;
+  const progress = status === "pending" ? 25 : status === "processing" ? 65 : isFailed ? 0 : 100;
+
+  if (isFailed) {
+    return (
+      <div className="max-w-md mx-auto">
+        <div
+          style={{
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.3)",
+            borderRadius: 8,
+            padding: "1.25rem",
+            marginBottom: "1rem",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ color: "#ef4444", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              ✕ Processing Failed
+            </span>
+          </div>
+          <div
+            style={{
+              color: "#b91c1c",
+              fontSize: "0.78rem",
+              fontFamily: "monospace",
+              wordBreak: "break-word",
+              maxHeight: 120,
+              overflowY: "auto",
+              lineHeight: 1.5,
+            }}
+          >
+            {error}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <button
+            onClick={() => router.push("/")}
+            className="vi-btn-primary"
+            style={{ fontSize: "0.82rem", padding: "0.45rem 1.1rem" }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto">
@@ -70,11 +115,6 @@ export default function ProgressPoller({ jobId }: ProgressPollerProps) {
           />
         </div>
       </div>
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
-          {error}
-        </div>
-      )}
     </div>
   );
 }
